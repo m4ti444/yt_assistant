@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Video Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 YT Video Assistant</h1>
+            <p>Automatiza tu flujo de producción</p>
+        </header>
+
+        <main>
+            <div class="panel glass">
+                <h2>1. Pega tu guion de Gemini</h2>
+                <textarea id="script-input" placeholder="NIVEL 1: EL NIÑO PRODIGIO..."></textarea>
+                <button id="parse-btn" class="btn primary">Procesar Guion</button>
+            </div>
+
+            <div class="panel glass" id="results-panel" style="display: none;">
+                <div class="grid">
+                    <div class="column">
+                        <h2>🎨 Prompts para Imágenes</h2>
+                        <div class="controls" style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="image-options"
+                                style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                                <label for="ref-image"
+                                    style="font-size: 0.9em; font-weight: bold; margin-bottom: 5px; display: block;">Imagen
+                                    de Referencia (Opcional):</label>
+                                <input type="file" id="ref-image" accept="image/png, image/jpeg"
+                                    style="font-size: 0.8em;">
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="copy-next-btn" class="btn secondary">Copiar Siguiente</button>
+                                <button id="generate-images-btn" class="btn primary">Robot Google Flow</button>
+                            </div>
+                            <span id="copy-status" class="status-text"></span>
+                        </div>
+                        <div id="prompts-list" class="list-container"></div>
+                    </div>
+
+                    <div class="column">
+                        <h2>🎙️ Generación de Audio</h2>
+                        <div class="controls">
+                            <div class="engine-selector">
+                                <label><input type="radio" name="engine" value="edge" checked> Edge TTS (Gratis)</label>
+                                <label><input type="radio" name="engine" value="fish"> Fish.audio API</label>
+                            </div>
+                            <div class="fish-options" style="display: none; margin-top: 10px;">
+                                <input type="text" id="fish-model-id" placeholder="ID del modelo (Ej: Farid Dieck ID)">
+                            </div>
+                            <button id="generate-all-btn" class="btn primary">Generar Todos los Audios</button>
+                            <button id="download-zip-btn" class="btn success" disabled>Descargar ZIP</button>
+                        </div>
+                        <div id="phrases-list" class="list-container"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="/static/main.js"></script>
+</body>
+
+</html>
