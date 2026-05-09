@@ -7,7 +7,7 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
     """
     Automates Google Flow (ImageFX) using Playwright.
     """
-    user_data_dir = os.path.join(os.getcwd(), 'playwright_data')
+    user_data_dir = os.path.join(os.getcwd(), 'playwright_data_google')
     os.makedirs(user_data_dir, exist_ok=True)
     os.makedirs(output_folder, exist_ok=True)
 
@@ -106,13 +106,13 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
             await page.wait_for_timeout(1000)
             
             # Guardar los SRC de las imágenes actuales y marcarlas con una clase en el DOM.
-            # Almacenar los SRC es vital por si React recrea los nodos y pierden la clase.
             await page.evaluate('''() => {
                 window.oldImageSrcs = Array.from(document.querySelectorAll('img')).map(img => img.src).filter(src => src);
                 document.querySelectorAll('img').forEach(img => {
                     img.classList.add('my-old-image-mark');
                 });
             }''')
+            
             # Marcar los errores viejos (políticas o genéricos) para no volver a detectarlos
             old_errors = page.locator('text=/infringir|vaya, se ha producido un error/i')
             for i in range(await old_errors.count()):
@@ -123,8 +123,6 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
                 
             # Enviar el prompt
             print("[ImageAutomator] Enviando petición a Google Flow...")
-            # En editores Slate multilínea, a veces Enter solo hace salto de línea. 
-            # Intentaremos Ctrl+Enter y Enter.
             await page.keyboard.press('Control+Enter')
             await page.wait_for_timeout(500)
             
@@ -135,13 +133,10 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
             
             print("[ImageAutomator] Esperando a que se generen las imágenes (tiempo dinámico hasta 300s)...")
             
-            # Espera dinámica inteligente: revisamos cada 2s si apareció una imagen nueva
             generation_done = False
             policy_error_triggered = False
             
             for attempt in range(150): # 150 * 2s = 300s
-                # Contar todos los errores (políticas "infringir" o genéricos "vaya...")
-                # A veces un error de políticas solo afecta a una imagen y la otra se genera bien.
                 local_errors = page.locator('text=/infringir|vaya, se ha producido un error/i')
                 local_errors_count = 0
                 for i in range(await local_errors.count()):
@@ -165,13 +160,13 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
                         
                 if new_images_count + local_errors_count >= 2:
                     if new_images_count > 0:
-                        print(f"[ImageAutomator] ¡{new_images_count} nuevas imágenes y {local_errors_count} errores detectados en {attempt*2} segundos!")
-                        await page.wait_for_timeout(2000) # Dar tiempo a que el renderizado de Flow se asiente
+                        print(f"[ImageAutomator] ¡{new_images_count} nuevas imágenes detectadas en {attempt*2} segundos!")
+                        await page.wait_for_timeout(4000) # Dar tiempo a que el renderizado de Flow se asiente
                         generation_done = True
                         break
                     else:
                         print(f"[ImageAutomator] [ERROR] Todas las imágenes del prompt {prompt_id} fallaron (políticas o genérico).")
-                        policy_error_triggered = True # Lo tratamos como fallo global para saltar la descarga
+                        policy_error_triggered = True 
                         break
                     
                 await page.wait_for_timeout(2000)
@@ -179,16 +174,15 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
             if policy_error_triggered:
                 print(f"[ImageAutomator] [INFO] Saltando descarga para el prompt {prompt_id} debido a error de políticas.")
                 await page.wait_for_timeout(2000)
-                continue # Pasa directamente al siguiente prompt sin intentar descargar
+                continue 
             
             print("[ImageAutomator] Buscando y descargando la primera imagen generada válida (vía click derecho)...")
-            try:
-                # Buscamos todas las imágenes e iteramos, descartando las viejas por clase o src
-                images = page.locator('img')
-                
-                download_success = False
-                # Iteramos por las primeras imágenes hasta encontrar una que al hacer click derecho muestre "Descargar"
-                for i in range(min(20, await images.count())):
+            
+            images = page.locator('img')
+            download_success = False
+            
+            for i in range(min(20, await images.count())):
+                try:
                     img = images.nth(i)
                     
                     # Verificar si es vieja usando evaluate y la propiedad src
@@ -201,8 +195,7 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
                     if is_old:
                         continue
                         
-                    # Ignorar imágenes pequeñas (iconos, miniaturas de referencia, avatares)
-                    # Las imágenes generadas suelen ser grandes en la cuadrícula
+                    # Ignorar imágenes pequeñas
                     box = await img.bounding_box()
                     if not box or box['width'] < 100 or box['height'] < 100:
                         continue
@@ -211,8 +204,8 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
                     await img.click(button="right", force=True)
                     await page.wait_for_timeout(1000) # Esperamos a que abra el menú
                     
-                    # Ver si aparece la opción "Descargar"
-                    descargar_btn = page.locator('text="Descargar"').first
+                    # Ver si aparece la opción "Descargar" o "Download"
+                    descargar_btn = page.locator('text=/Descargar|Download/i').first
                     if await descargar_btn.is_visible():
                         # Hacemos hover para que se abra el submenú de 1K
                         await descargar_btn.hover()
@@ -233,15 +226,15 @@ async def generate_batch_images_flow(prompts, output_folder, ref_image_path=None
                             await page.mouse.click(0, 0)
                             break
                         else:
-                            print(f"[ImageAutomator] [WARNING] Se encontró 'Descargar' pero no '1K'.")
-                
-                if not download_success:
-                    print(f"[ImageAutomator] [WARNING] No se logró descargar automáticamente la imagen {prompt_id}.")
-                    print("[ImageAutomator] Pausando 15 segundos para que la descargues manualmente...")
-                    await page.wait_for_timeout(15000)
-                
-            except Exception as e:
-                print(f"[ImageAutomator] [ERROR] Falló la descarga de la imagen {prompt_id}: {e}")
+                            await page.mouse.click(0, 0)
+                    else:
+                        await page.mouse.click(0, 0)
+                except Exception as e:
+                    await page.mouse.click(0, 0)
+                    continue
+            
+            if not download_success:
+                print(f"[ImageAutomator] [WARNING] No se logró descargar automáticamente la imagen {prompt_id}.")
                 print("[ImageAutomator] Tienes 15 segundos para descargarla manualmente.")
                 await page.wait_for_timeout(15000)
             

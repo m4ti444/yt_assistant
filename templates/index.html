@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YT Video Assistant</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -24,6 +24,13 @@
             </div>
 
             <div class="panel glass" id="results-panel" style="display: none;">
+                <!-- ACCIÓN MAESTRA -->
+                <div class="panel glass" style="margin-bottom: 30px; border: 1px solid #10b981; background: rgba(16, 185, 129, 0.05); position: relative; overflow: hidden;">
+                    <div style="position: absolute; top:0; left:0; right:0; height: 3px; background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                    <h2 style="color: #10b981; margin-top:0; display: flex; align-items: center; gap: 8px;">🚀 Acción Maestra (Producción Paralela)</h2>
+                    <p style="margin-bottom: 20px; color: #a7f3d0; font-weight: 500;">Genera las imágenes, graba las voces y anima los videos en Grok al mismo tiempo. Todo conectado.</p>
+                    <button id="generate-all-parallel-btn" class="btn success" style="width: 100%; font-size: 1.15em; padding: 18px; cursor: pointer; letter-spacing: 1px;">⚡ INICIAR FÁBRICA DE VIDEOS ⚡</button>
+                </div>
                 <div class="grid">
                     <div class="column">
                         <h2>🎨 Prompts para Imágenes</h2>
@@ -60,6 +67,12 @@
                         </div>
                         <div id="phrases-list" class="list-container"></div>
                     </div>
+                </div>
+
+                <div class="panel glass" style="margin-top: 30px; background: rgba(0,0,0,0.2);">
+                    <h2 style="margin-top:0; color: #f43f5e;">🤖 3. Post-Producción: Animar en Grok</h2>
+                    <p style="margin-bottom: 15px; color: #fda4af;">Toma todas las imágenes descargadas y usa Grok para convertirlas en videos cortos. (Ya se ejecuta automáticamente en la Acción Maestra).</p>
+                    <button id="generate-grok-btn" class="btn" style="background: linear-gradient(135deg, #111827, #000); border: 1px solid #333; color: white; width: 100%;">Animar Imágenes en Grok Individualmente</button>
                 </div>
             </div>
         </main>

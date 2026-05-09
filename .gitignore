@@ -8,3 +8,7 @@ test_data/
 uploads/
 *.pyc
 *.pyo
+
+playwright_data_*/
+image_outputs_animated/
+image_automator copy.py

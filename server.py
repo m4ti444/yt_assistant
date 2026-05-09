@@ -143,6 +143,72 @@ def generate_batch_images():
         print(f"Image Automator Error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/generate-all', methods=['POST'])
+def generate_all():
+    import json
+    prompts_str = request.form.get('prompts', '[]')
+    phrases_str = request.form.get('phrases', '[]')
+    
+    prompts = json.loads(prompts_str)
+    phrases = json.loads(phrases_str)
+    
+    if not prompts or not phrases:
+        return jsonify({"error": "No prompts or phrases provided"}), 400
+        
+    ref_image_path = None
+    if 'ref_image' in request.files:
+        file = request.files['ref_image']
+        if file.filename != '':
+            ref_image_path = os.path.join(app.config['UPLOAD_FOLDER'], 'ref_image.jpg')
+            file.save(ref_image_path)
+            
+    try:
+        from image_automator import generate_batch_images_flow
+        from fish_automator import generate_batch_fish_audio_playwright
+        from grok_automator import generate_videos_in_grok
+        
+        async def run_both():
+            # Crear las tareas, pero le damos un pequeño retraso al inicio del segundo
+            # para evitar que Playwright se congele al abrir dos navegadores a la vez
+            task1 = asyncio.create_task(generate_batch_images_flow(prompts, app.config['IMAGE_OUTPUT_FOLDER'], ref_image_path))
+            await asyncio.sleep(3)
+            task2 = asyncio.create_task(generate_batch_fish_audio_playwright(phrases, app.config['OUTPUT_FOLDER']))
+            await asyncio.sleep(3)
+            
+            prompts_dict = {p['id']: p['text'] for p in prompts}
+            app.config['GROK_OUTPUT_FOLDER'] = 'image_outputs_animated'
+            os.makedirs(app.config['GROK_OUTPUT_FOLDER'], exist_ok=True)
+            
+            task3 = asyncio.create_task(generate_videos_in_grok(app.config['IMAGE_OUTPUT_FOLDER'], app.config['GROK_OUTPUT_FOLDER'], prompts_dict))
+            
+            await asyncio.gather(task1, task2, task3)
+            
+        asyncio.run(run_both())
+        return jsonify({"success": True})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Parallel Automator Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/generate-grok', methods=['POST'])
+def generate_grok():
+    import json
+    prompts_str = request.form.get('prompts', '{}')
+    prompts_dict = json.loads(prompts_str)
+    
+    try:
+        from grok_automator import generate_videos_in_grok
+        app.config['GROK_OUTPUT_FOLDER'] = 'image_outputs_animated'
+        os.makedirs(app.config['GROK_OUTPUT_FOLDER'], exist_ok=True)
+        asyncio.run(generate_videos_in_grok(app.config['IMAGE_OUTPUT_FOLDER'], app.config['GROK_OUTPUT_FOLDER'], prompts_dict))
+        return jsonify({"success": True})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Grok Automator Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/download-zip', methods=['GET'])
 def download_zip():
     zip_path = os.path.join(app.config['OUTPUT_FOLDER'], 'audios.zip')

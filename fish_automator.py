@@ -8,7 +8,7 @@ async def generate_batch_fish_audio_playwright(phrases, output_folder):
     Automates fish.audio using Playwright to generate audio for a list of phrases.
     Uses a persistent context so the user stays logged in.
     """
-    user_data_dir = os.path.join(os.getcwd(), 'playwright_data')
+    user_data_dir = os.path.join(os.getcwd(), 'playwright_data_fish')
     os.makedirs(user_data_dir, exist_ok=True)
     os.makedirs(output_folder, exist_ok=True)
 

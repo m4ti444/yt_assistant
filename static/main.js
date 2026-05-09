@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyNextBtn = document.getElementById('copy-next-btn');
     const generateAllBtn = document.getElementById('generate-all-btn');
     const downloadZipBtn = document.getElementById('download-zip-btn');
+    const generateAllParallelBtn = document.getElementById('generate-all-parallel-btn');
     const engineRadios = document.getElementsByName('engine');
     const fishOptions = document.querySelector('.fish-options');
 
@@ -282,4 +283,95 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadZipBtn.addEventListener('click', () => {
         window.location.href = '/download-zip';
     });
+
+    if (generateAllParallelBtn) {
+        generateAllParallelBtn.addEventListener('click', async () => {
+            if (!currentData || !currentData.prompts.length || !currentData.phrases.length) return;
+            
+            const engine = document.querySelector('input[name="engine"]:checked').value;
+            if (engine !== 'fish') {
+                alert('¡Atención! Para usar el bot en paralelo se enviará a Fish Audio mediante Playwright.');
+            }
+
+            generateAllParallelBtn.disabled = true;
+            const refImageInput = document.getElementById('ref-image');
+
+            alert("¡Iniciando robots EN PARALELO!\n\nSe abrirán 2 pestañas de navegador (una de ImageFX y otra de Fish Audio). ¡No toques el teclado ni el ratón mientras operan!");
+
+            currentData.prompts.forEach((p, i) => { const c = document.getElementById(`prompt-card-${i}`); if (c) c.style.opacity = '0.5'; });
+            currentData.phrases.forEach(p => { 
+                const c = document.getElementById(`phrase-card-${p.id}`); 
+                if (c) c.classList.add('generating');
+                const statusLabel = document.getElementById(`phrase-status-${p.id}`);
+                if(statusLabel) statusLabel.textContent = 'En cola (Paralelo)...';
+            });
+
+            try {
+                const formData = new FormData();
+                formData.append('prompts', JSON.stringify(currentData.prompts));
+                formData.append('phrases', JSON.stringify(currentData.phrases));
+                if (refImageInput && refImageInput.files.length > 0) {
+                    formData.append('ref_image', refImageInput.files[0]);
+                }
+
+                const response = await fetch('/generate-all', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                alert("¡Producción en paralelo completada exitosamente!");
+                
+                currentData.prompts.forEach((p, i) => { const c = document.getElementById(`prompt-card-${i}`); if (c) { c.style.opacity = '1'; c.style.borderLeft = '4px solid #10b981'; } });
+                currentData.phrases.forEach(phrase => {
+                    const c = document.getElementById(`phrase-card-${phrase.id}`);
+                    if (c) { c.classList.remove('generating'); c.classList.add('done'); }
+                    const statusLabel = document.getElementById(`phrase-status-${phrase.id}`);
+                    if(statusLabel) statusLabel.textContent = '✅ Listo';
+                    const audio = document.getElementById(`audio-${phrase.id}`);
+                    if(audio){
+                        audio.src = `/outputs/${phrase.id}.mp3?t=${new Date().getTime()}`;
+                        audio.style.display = 'block';
+                    }
+                });
+
+            } catch (err) {
+                alert('Error en ejecución paralela: ' + err.message);
+            }
+            generateAllParallelBtn.disabled = false;
+        });
+    }
+
+    const generateGrokBtn = document.getElementById('generate-grok-btn');
+    if (generateGrokBtn) {
+        generateGrokBtn.addEventListener('click', async () => {
+            if (!currentData || !currentData.prompts.length) return;
+            generateGrokBtn.disabled = true;
+            
+            // Convertir prompts a un diccionario id -> text para Grok
+            const promptsDict = {};
+            currentData.prompts.forEach(p => promptsDict[p.id] = p.text);
+            
+            alert("¡Iniciando Robot de Grok!\n\nRecuerda: Deberás tener la sesión iniciada en Grok. Si no es así, tendrás 5 minutos para loguearte.");
+            
+            try {
+                const formData = new FormData();
+                formData.append('prompts', JSON.stringify(promptsDict));
+                
+                const response = await fetch('/generate-grok', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                alert("¡Videos animados y guardados con éxito en la carpeta image_outputs_animated!");
+            } catch(e) {
+                alert("Error en Grok: " + e.message);
+            }
+            generateGrokBtn.disabled = false;
+        });
+    }
 });
